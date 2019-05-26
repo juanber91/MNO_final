@@ -2,7 +2,7 @@
 library('tidyverse')
 source('scripts/auxiliares_pruebas.R')
 
-window <- 1200 # ¿Cuánto tiempo tenemos para analizar el sistema?
+window <- 20 # ¿Cuánto tiempo tenemos para analizar el sistema?
 k <- 1         # the flow time and fractional flow time is in Lk-norm
 numofjob <- 6  # número de tareas simuladas
 lambda <- 400  # lambda necesaria incremental del problema dual
@@ -43,24 +43,24 @@ tol_outer_iter = 1e-6
 tol_inner_iter = 1e-5
 tol_backtracking = 1e-14
 maxiter_path = 30
-maxiter_Newton = 300
+maxiter_Newton = 30
 mu = 10
-p_ast = f(x_ast)
+
 
 # this part is for online convex optimization
 for(j in 1:window) {
   
   print(j)
   
-  # for(i in 1:numofjob) {
-  #   if(job[i,2] >= j) {
-  #     fft[1,i] <- 0
-  #     job[i,6] <- 0 # not arrive
-  #   } else {
-  #     fft[1,i] <- (j-job[i,2])^k / job[i,3] + job[i,3]^(k-1)
-  #     job[i,6] <- 1 # arrive
-  #   }
-  # }
+  for(i in 1:numofjob) {
+    if(job[i,2] >= j) {
+      fft[1,i] <- 0
+      job[i,6] <- 0 # not arrive
+    } else {
+      fft[1,i] <- (j-job[i,2])^k / job[i,3] + job[i,3]^(k-1)
+      job[i,6] <- 1 # arrive
+    }
+  }
   
   # resolviendo con disciplined convex optimization
   # cvx_begin quiet
@@ -97,6 +97,8 @@ for(j in 1:window) {
     f_rest[[2*numofjob+i+1]] <- eval(parse(text = paste0('function(x) x[', i, '] - job[', i, ',3] + job[', i, ',5]')))
   }
   
+  p_ast = f(x_ast)
+  
   
   l <- length(f_rest)
   names(f_rest) <- paste0('f', 1:l)
@@ -109,7 +111,7 @@ for(j in 1:window) {
                       maxiter_Newton = maxiter_Newton, mu = mu)
   
   # update the finish rate of each job 
-  x0 <- round(a$x, 4)
+  # x0 <- round(a$x, 2)
   # x0[x0<0] <- 0
   job[,5] <- job[,5] + x0
   
@@ -126,7 +128,7 @@ for(j in 1:window) {
   
   # compute the finish time of each job
   for(i in 1:numofjob) {
-    if(x[i] > 0) {
+    if(x0[i] > 0) {
       if(job[i, 5] >= job[i,3]) {
         job[i,7] <- j
       }
