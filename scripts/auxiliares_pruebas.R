@@ -266,7 +266,7 @@ newton.sin.rest <- function(f, t0, f_rest, x_ast, p_ast, x0, tol, tol_backtracki
     t <- backtracking(alpha = alpha, beta = beta, f = f, f_rest = f_rest,
                       dir_desc = dir_Newton, t0 = t0, 
                       x = x, derivada_direccional = derivada_direccional)
-    x <- x + as.vector(t)*t(dir_desc)
+    x <- x + as.vector(t)*t(dir_Newton)
     
     feval <- f(x)
     

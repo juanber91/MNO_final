@@ -2,11 +2,11 @@
 library('tidyverse')
 source('scripts/auxiliares_pruebas.R')
 
-window <- 12 # ¿Cuánto tiempo tenemos para analizar el sistema?
-k <- 1  # the flow time and fractional flow time is in Lk-norm
-numofjob <- 6 # número de tareas simuladas
-lambda <- 400 # lambda necesaria incremental del problema dual
-time <- 1:t
+window <- 1200 # ¿Cuánto tiempo tenemos para analizar el sistema?
+k <- 1         # the flow time and fractional flow time is in Lk-norm
+numofjob <- 6  # número de tareas simuladas
+lambda <- 400  # lambda necesaria incremental del problema dual
+time <- 1:window
 
 # 1 id, 
 # 2 arrive time, 
@@ -17,16 +17,16 @@ time <- 1:t
 # 7 finish time of oco
 job           <- matrix(rep(0, 7*numofjob), ncol = 7) 
 schedule      <- matrix(rep(0, window*numofjob), ncol = window) # the scheduling result of this oco method
-fft           <- matrix(rep(0, numofjob), nrow = 1) # fractional flow time
-ocofractional <- matrix(rep(0, window), ncol = 1) # the fractional flow time of each time
-ocoflow       <- matrix(rep(0, window), ncol = 1) # the flow time of each time
+fft           <- matrix(rep(0, numofjob), nrow = 1)             # fractional flow time
+ocofractional <- matrix(rep(0, window), ncol = 1)               # the fractional flow time of each time
+ocoflow       <- matrix(rep(0, window), ncol = 1)               # the flow time of each time
 
 job[,1] <- 1:6 # ID
 job[,2] <- rep(0, 6) # arrive_time. Aquí estoy inicializando todos como ceros para el problema offline
 job[,3] <- c(0.1, 0.2, 1, 3, 0.5, 0.8) # size
 job[,4] <- rep(1, 6) # CPU
 
-## Se simula la información para el problema online
+# Se simula la información para el problema online
 # for (i in 1:numofjob) {
 #   job[i,1] <- i
 #   if (i == 1) job[i, 2] <- 0
@@ -34,6 +34,7 @@ job[,4] <- rep(1, 6) # CPU
 #   job[i, 3] <- (round(runif(1) * 5) + 1) / 2;
 #   job[i, 4] <- round(runif(1),1)
 # }
+job
 
 x_ast <- matrix(rep(0, numofjob), nrow = 1)
 # x0 <- rep(0.11, numofjob)
@@ -42,7 +43,7 @@ tol_outer_iter = 1e-6
 tol_inner_iter = 1e-5
 tol_backtracking = 1e-14
 maxiter_path = 30
-maxiter_Newton = 30
+maxiter_Newton = 300
 mu = 10
 p_ast = f(x_ast)
 
@@ -77,7 +78,7 @@ for(j in 1:window) {
     unos <- matrix(rep(1, numofjob), ncol = 1)
     
     sum(fft * x) +
-      lambda * t(job[,6]) %*% (t(job[,3] - job[,5] - x) * (window * unos - job[,2])) +
+      lambda * t(job[,6]) %*% (t(job[,3] - job[,5] - x) * (j * unos - job[,2])) +
       sum(x*x) / 100
     
   }
@@ -108,11 +109,12 @@ for(j in 1:window) {
                       maxiter_Newton = maxiter_Newton, mu = mu)
   
   # update the finish rate of each job 
-  x0 <- round(a$x, 2)
+  x0 <- round(a$x, 4)
+  # x0[x0<0] <- 0
   job[,5] <- job[,5] + x0
   
   # update lambda
-  lambda <- lambda + 5*k * job[,6] *(job[,3] - job[,5] - x0)
+  lambda <- lambda + 5*k * t(matrix(job[,6], ncol = 1)) %*% (matrix(job[,3], ncol = 1) - matrix(job[,5], ncol = 1) - t(x0))
   schedule[,j] <- x0
   
   # compute the fractional flow time of each job
